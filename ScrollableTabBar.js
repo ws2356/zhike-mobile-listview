@@ -1,40 +1,35 @@
-'use strict';
+// @flow
 
-import React, {Component, ProptTypes} from 'react';
+import React, { Component } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
-  PixelRatio,
-  TouchableWithoutFeedback,
-  Animated,
   Dimensions,
 } from 'react-native';
-import _ from 'underscore';
+import _ from 'lodash';
 import Button from 'react-native-scrollable-tab-view/Button';
-let {width:ScreenW} = Dimensions.get('window');
-
-const THROTTLE_DELAY = 500
+const { width:ScreenW } = Dimensions.get('window');
 
 export default class ScrollableTabBar extends Component {
   constructor(props) {
     super(props);
-    this.state = {scrollItemLayoutInfos:[]};
+    this.state = { scrollItemLayoutInfos:[] };
     this.offsetX = 0;
   }
 
   componentWillReceiveProps(nextProps) {
-    let nextTab = (nextProps && nextProps.activeTab) || 0;
+    const nextTab = (nextProps && nextProps.activeTab) || 0;
     if (this._currentItem != nextTab) {
       this._currentItem = nextTab;
-      let beyond = this._itemBeyondScreen(nextTab);
+      const beyond = this._itemBeyondScreen(nextTab);
       if (beyond > 0) {
-        let newOffset = this._offsetForItemToDockRight(nextTab);
-        this.refs.scrollView.scrollTo({y:0, x:newOffset}, true);
-      }else if (beyond < 0) {
-        let newOffset = this._offsetForItemToDockLeft(nextTab);
-        this.refs.scrollView.scrollTo({y:0, x:newOffset}, true);
+        const newOffset = this._offsetForItemToDockRight(nextTab);
+        this.refs.scrollView.scrollTo({ y:0, x:newOffset }, true);
+      } else if (beyond < 0) {
+        const newOffset = this._offsetForItemToDockLeft(nextTab);
+        this.refs.scrollView.scrollTo({ y:0, x:newOffset }, true);
       }
     }
   }
@@ -45,13 +40,13 @@ export default class ScrollableTabBar extends Component {
  * @return {[type]}       [description]
  */
   _itemBeyondScreen(index) {
-    let layout = this.scrollItemLayoutInfos[index];
+    const layout = this.scrollItemLayoutInfos[index];
     if (layout) {
-      let offsetRight = layout.x + layout.width - this.offsetX - ScreenW;
+      const offsetRight = layout.x + layout.width - this.offsetX - ScreenW;
       if (offsetRight > 0) {
         return offsetRight;
       }
-      let offsetLeft = layout.x - this.offsetX;
+      const offsetLeft = layout.x - this.offsetX;
       if (offsetLeft < 0) {
         return offsetLeft;
       }
@@ -64,7 +59,7 @@ export default class ScrollableTabBar extends Component {
   }
 
   _offsetForItemToDockRight(index) {
-    let w = this.scrollItemLayoutInfos[index].width;
+    const w = this.scrollItemLayoutInfos[index].width;
     let ret = this._offsetForItemToDockLeft(index);
     if (w < ScreenW) {
       ret -= (ScreenW - w);
@@ -75,17 +70,17 @@ export default class ScrollableTabBar extends Component {
   renderTabOption(name, page, pageCount, passProps) {
     const isTabActive = this.props.activeTab === page;
 
-    return <Button
-      style={{height:50, alignItems:'center', justifyContent:'center', marginLeft: 22, marginRight: page == pageCount - 1 ? 22 : 38}}
+    return (<Button
+      style={{ height:50, alignItems:'center', justifyContent:'center', marginLeft: 22, marginRight: page == pageCount - 1 ? 22 : 38 }}
       key={name}
       accessible={true}
       accessibilityLabel={name}
-      accessibilityTraits='button'
+      accessibilityTraits="button"
       onPress={() => this.props.goToPage(page)}
       {...passProps}
     >
       {this.renderTabName(name, page, isTabActive)}
-    </Button>;
+    </Button>);
   }
 
   renderTabName(name, page, isTabActive) {
@@ -93,16 +88,16 @@ export default class ScrollableTabBar extends Component {
     const textColor = isTabActive ? activeTextColor : inactiveTextColor;
     const fontWeight = isTabActive ? 'bold' : 'normal';
 
-    return <View style={[styles.tab, this.props.tabStyle, {alignItems:'center', justifyContent:'center'}]}>
-      <Text style={[{color: textColor, fontWeight, }, textStyle, ]}>
+    return (<View style={[styles.tab, this.props.tabStyle, { alignItems:'center', justifyContent:'center' }]}>
+      <Text style={[{ color: textColor, fontWeight, }, textStyle,]}>
         {name}
       </Text>
-    </View>;
+    </View>);
   }
 
   _onLayoutTabItem(index, size) {
     if (size) {
-      let arr = this.scrollItemLayoutInfos;
+      const arr = this.scrollItemLayoutInfos;
       arr[index] = size;
       this.scrollItemLayoutInfos = arr;
     }
@@ -113,7 +108,7 @@ export default class ScrollableTabBar extends Component {
   }
 
   set scrollItemLayoutInfos(arr) {
-    this.setState({scrollItemLayoutInfos:arr});
+    this.setState({ scrollItemLayoutInfos:arr });
   }
 
   render() {
@@ -122,7 +117,7 @@ export default class ScrollableTabBar extends Component {
 
     let currentItemLayout = this.scrollItemLayoutInfos[this.props.activeTab];
     if (!currentItemLayout) {
-      currentItemLayout = {x: 0, width: 0};
+      currentItemLayout = { x: 0, width: 0 };
     }
     const tabUnderlineStyle = {
       position: 'absolute',
@@ -137,18 +132,18 @@ export default class ScrollableTabBar extends Component {
       <View>
         <ScrollView
           ref={'scrollView'}
-          style={[styles.tabs, {backgroundColor: this.props.backgroundColor, }, this.props.style, {height:50}]}
+          style={[styles.tabs, { backgroundColor: this.props.backgroundColor, }, this.props.style, { height:50 }]}
           showsHorizontalScrollIndicator={false}
           scrollEventThrottle={16}
           horizontal
-          contentContainerStyle={{alignItems:'center'}}
-          onScroll = {this._onScroll.bind(this)}
+          contentContainerStyle={{ alignItems:'center' }}
+          onScroll={this._onScroll.bind(this)}
         >
-          <View style={{flexDirection:'row'}}>
+          <View style={{ flexDirection:'row' }}>
             {
               this.props.tabs.map(
                 (tab, i) => this.renderTabOption(
-                  tab, i, this.props.tabs.length, {onLayout:(e) => this._onLayoutTabItem(i, e && e.nativeEvent && e.nativeEvent.layout)}
+                  tab, i, this.props.tabs.length, { onLayout:e => this._onLayoutTabItem(i, e && e.nativeEvent && e.nativeEvent.layout) }
                 )
               )
             }
@@ -160,7 +155,7 @@ export default class ScrollableTabBar extends Component {
   }
 
   _onScroll(e) {
-    let offset = e.nativeEvent.contentOffset;
+    const offset = e.nativeEvent.contentOffset;
     this.offsetX = offset.x;
   }
 

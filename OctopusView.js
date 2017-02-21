@@ -11,7 +11,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import _ from 'underscore';
+import _ from 'lodash';
 import Perf from 'react-addons-perf';
 import shallowCompare from 'react-addons-shallow-compare';
 
@@ -125,7 +125,6 @@ export default class OctopusView extends Component {
 
   _isContentSmall(scrollIndex) {
     const contentHeight = this._getPageContentHeight(scrollIndex);
-    const defaultContentHeight = this._defaultPageContentHeight();
     const inputRange = this.scrollYInputRange[1] - this.scrollYInputRange[0];
     return (
       typeof contentHeight === 'number' &&
@@ -274,26 +273,6 @@ export default class OctopusView extends Component {
     return ScreenH - this.props.navHeightDown - this.headerLayoutHeight - 49; // 49 is height of tabbar
   }
 
-  render() {
-    return (
-      <View style={styles.container} >
-        <ScrollView
-          horizontal
-          pagingEnabled
-          scrollEventThrottle={16}
-          style={styles.hScroll}
-          onMomentumScrollEnd={e => this._handleHorizontalScrollChange(e)}
-          onScroll={e => this._handleOnScroll(e)}
-          ref={hScroll => (this._hScroll = hScroll)}
-          automaticallyAdjustContentInsets={false}
-        >
-          {this._renderPageList()}
-        </ScrollView>
-        {this._renderHeader()}
-      </View>
-    );
-  }
-
   _handleOnScroll(e) {
     this._updateScrollableIndex(e);
   }
@@ -399,6 +378,26 @@ export default class OctopusView extends Component {
 
   _installPage(page, index) {
     this._vScrollables[index] = page;
+  }
+
+  render() {
+    return (
+      <View style={styles.container} >
+        <ScrollView
+          horizontal
+          pagingEnabled
+          scrollEventThrottle={16}
+          style={styles.hScroll}
+          onMomentumScrollEnd={e => this._handleHorizontalScrollChange(e)}
+          onScroll={e => this._handleOnScroll(e)}
+          ref={hScroll => (this._hScroll = hScroll)}
+          automaticallyAdjustContentInsets={false}
+        >
+          {this._renderPageList()}
+        </ScrollView>
+        {this._renderHeader()}
+      </View>
+    );
   }
 }
 
