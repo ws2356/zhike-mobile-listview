@@ -1,4 +1,4 @@
-//@flow
+
 
 import React, {
   PropTypes,
@@ -11,6 +11,9 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import _ from 'underscore';
+import Perf from 'react-addons-perf';
+import shallowCompare from 'react-addons-shallow-compare';
 
 const { width:ScreenW, height:ScreenH } = Dimensions.get('window');
 
@@ -18,136 +21,228 @@ export default class OctopusView extends Component {
   constructor(props) {
     super(props);
 
-    this.state = { scrollY: new Animated.Value(0) };
-    this._headerLayoutHeight = 0;
-    this._headerHiddenPartLayoutHeight = 0;
+    this.state = {
+      scrollY: new Animated.Value(0),
+      headerLayoutHeight:0,
+      headerHiddenPartLayoutHeight:0,
+    };
 
     this._pageContentLayoutInfo = [];
-    this._hScrollables = [];
-
-    // default showing the first scrollable view
-    this._currentScrollableIndex = 0;
-    this._currentVerticalScroll = this.scrollYInputRange[0];
+    this._vScrollables = [];
 
     this._scrollDests = {};
-    this._scrollPositions = {};
   }
 
   componentWillReceiveProps(nextProps) {
     const visiblePage = (nextProps && nextProps.visiblePage) || 0;
-    if (this._currentScrollableIndex !== visiblePage) {
-      this._currentScrollableIndex = visiblePage;
-      this._hScroll && this._hScroll.scrollTo({ x:this._currentScrollableIndex * ScreenW });
+    if (this.getCurrentScrollableIndex() !== visiblePage) {
+      this.setCurrentScrollableIndex(visiblePage);
+      this._pauseSetCurrentScrollableIndex = true;
+      this._hScroll && this._hScroll.scrollTo({ x:this.getCurrentScrollableIndex() * ScreenW });
+    }
+    if (visiblePage !== this.props.visiblePage) {
+      this._headerRef && this._headerRef.forceRender(visiblePage);
     }
   }
 
-  get headerLayoutHeight() {
-    // console.log('headerLayoutHeight: ', this._headerLayoutHeight);
-    return this._headerLayoutHeight;
-  }
-
-  get headerHiddenPartLayoutHeight() {
-    if (this._headerHiddenPartLayoutHeight > 0) {
-      return this._headerHiddenPartLayoutHeight;
-    } else {
-      return this.headerLayoutHeight;
+  shouldComponentUpdate(nextProps, nextState) {
+    if (nextProps && nextProps.visiblePage !== this.props.visiblePage) {
+      // because this kind of change is already handled in componentWillReceiveProps
+      // and no other props change simutaneously with this prop
+      return false;
     }
+    const ret = shallowCompare(this, nextProps, nextState);
+    return ret;
   }
 
-  get currentScrollableIndex() {
-    return this._currentScrollableIndex;
-  }
-
-  set currentScrollableIndex(index) {
-    // console.log('original currentScrollableIndex, currentScrollableIndex: ', this._currentScrollableIndex, index);
-    if (index !== this.currentScrollableIndex) {
-      this._handlePageChange(this.currentScrollableIndex, index);
+  setCurrentScrollableIndex(index) {
+    if (this._pauseSetCurrentScrollableIndex) {
+      return;
+    }
+    if (index !== this.getCurrentScrollableIndex()) {
+      this._handlePageChange(this.getCurrentScrollableIndex(), index);
       this.props && this.props.onPageChange && this.props.onPageChange(index);
     }
     this._currentScrollableIndex = index;
   }
 
+  getCurrentScrollableIndex() {
+    return this._currentScrollableIndex || 0;
+  }
+
+  get headerLayoutHeight() {
+    return this.state.headerLayoutHeight;
+  }
+
+  get headerHiddenPartLayoutHeight() {
+    if (this.state.headerHiddenPartLayoutHeight > 0) {
+      return this.state.headerHiddenPartLayoutHeight;
+    } else {
+      return this.headerLayoutHeight;
+    }
+  }
+
   _handlePageChange(oldIndex, newIndex) {
+    if (!this._verticalScrollPos) {
+      console.error('initial scroll value not set up, not supposed to happen!!!');
+      return;
+    }
     const defaultContentHeight = this._defaultPageContentHeight();
     const scrollYInputRange = this.scrollYInputRange;
 
-    const currentVerticalScroll = this._currentVerticalScroll;
+    const currentVerticalScroll = this._verticalScrollPos[oldIndex];
     const contentHeight = this._getPageContentHeight(newIndex);
 
     const maxPossibleScrollY = scrollYInputRange[0] + Math.max(0, contentHeight - defaultContentHeight);
-    const updateCurrentScrollY = Math.min(maxPossibleScrollY, currentVerticalScroll);
-    const newScrollable = this._hScrollables[newIndex];
-    // console.log('sync scroll for index, oldIndex was: ', updateCurrentScrollY, newIndex, oldIndex);
+    const updateCurrentScrollY = Math.min(maxPossibleScrollY, currentVerticalScroll, scrollYInputRange[1]);
+    const newScrollable = this._vScrollables[newIndex];
     if (newScrollable) {
-      this._driveVerticalScrollAnimation(updateCurrentScrollY, () => { this._currentVerticalScroll = updateCurrentScrollY; }, 300);
-      const lastScrollY = this._scrollPositions[newIndex];
-      if (typeof lastScrollY !== 'number' || updateCurrentScrollY !== lastScrollY) {
-        this._headerAnimationForbid = true;
+      if (currentVerticalScroll < scrollYInputRange[1] || this._verticalScrollPos[newIndex] < scrollYInputRange[1]) {
+        Perf.start();
+        this._perfIndex = newIndex;
+        this._scrollDests[newIndex] = updateCurrentScrollY;
+        newScrollable.scrollTo({ y:updateCurrentScrollY - 1 });
+        newScrollable.scrollTo({ y:updateCurrentScrollY });
       }
-      this._scrollDests[newIndex] = updateCurrentScrollY;
-      newScrollable.scrollTo({ y:updateCurrentScrollY });
-      // fixme: this is a hack, normally onScroll callback will be called and so next statement will be called accordingly, but somesimtes it does not get called, so ...
-    } else {
+    } else if (!newScrollable) {
       console.error('no ref to horizontal scrollable at index: ', newIndex);
     }
   }
 
-  _handleHeaderLayout(e, relayCallback) {
+  _scrollExtend(scrollIndex) {
+    const defaultContentHeight = this._defaultPageContentHeight();
+    const scrollYInputRange = this.scrollYInputRange;
+    const contentHeight = this._getPageContentHeight(scrollIndex);
+    const maxPossibleScrollY = scrollYInputRange[0] + Math.max(0, contentHeight - defaultContentHeight);
+    const minPossibleScrollY = scrollYInputRange[0];
+    return [minPossibleScrollY, maxPossibleScrollY];
+  }
+
+  _isScrollYInRange(scrollY, scrollIndex) {
+    const [minPossibleScrollY, maxPossibleScrollY] = this._scrollExtend(scrollIndex);
+    return scrollY >= minPossibleScrollY && scrollY <= maxPossibleScrollY;
+  }
+
+  _isContentSmall(scrollIndex) {
+    const contentHeight = this._getPageContentHeight(scrollIndex);
+    const defaultContentHeight = this._defaultPageContentHeight();
+    const inputRange = this.scrollYInputRange[1] - this.scrollYInputRange[0];
+    return (
+      typeof contentHeight === 'number' &&
+      typeof inputRange === 'number' &&
+      contentHeight < inputRange
+    );
+  }
+
+  _tryScrollTo(scrollY, scrollIndex) {
+    const newScrollable = this._vScrollables[scrollIndex];
+    if (!newScrollable) {
+      return;
+    }
+    const [sMin, sMax] = this._scrollExtend(scrollIndex);
+    newScrollable.scrollTo({
+      animated:false,
+      y:Math.max(sMin, Math.min(sMax, scrollY))
+    });
+  }
+
+  _onHeaderLayout(e, relayCallback) {
     // assumption: the value of e dont change too much, and this method is called only before user interaction
-    //
     let height = 0;
     e && e.nativeEvent && e.nativeEvent.layout && Object.prototype.hasOwnProperty.call(e.nativeEvent.layout, 'height') &&
     (height = e.nativeEvent.layout.height);
-    !Number.isNaN(height) && (this._headerLayoutHeight = height);
-    this.forceUpdate();
-
+    if (this.state.headerLayoutHeight !== height) {
+      this._setupVerticalScrollTable();
+      this.setState(
+        { headerLayoutHeight:height },
+        () => {
+          this._resetFirstPagePositionAndAnimatedValue();
+          this._animatedValueRef();
+        }
+      );
+    }
     relayCallback && relayCallback(e);
   }
 
-  _handleHeaderHiddenPartLayout(e) {
+  _onHeaderHiddenPartLayout(e) {
     // assumption: the value of e dont change too much, and this method is called only before user interaction
     let height = 0;
-    e && e.nativeEvent && e.nativeEvent.layout && Object.prototype.hasOwnProperty.call(e.nativeEvent.layout.hasOwnProperty, 'height') &&
+    e && e.nativeEvent && e.nativeEvent.layout && Object.prototype.hasOwnProperty.call(e.nativeEvent.layout, 'height') &&
     (height = e.nativeEvent.layout.height);
-    !Number.isNaN(height) && (this._headerHiddenPartLayoutHeight = height);
-    this.forceUpdate();
+    if (this.state.headerHiddenPartLayoutHeight !== height) {
+      this._setupVerticalScrollTable();
+      this.setState(
+        { headerHiddenPartLayoutHeight:height },
+        () => this._animatedValueRef()
+      );
+    }
   }
 
-  _checkReachDest(e, index) {
-    const dest = this._scrollDests[index];
-    if (typeof dest === 'number') {
-      const offsetY = e && e.nativeEvent && e.nativeEvent.contentOffset && e.nativeEvent.contentOffset.y;
-      if (dest === offsetY) {
-        this._scrollDests[index] = null;
-        this._headerAnimationForbid = false;
-      }
+  _resetFirstPagePositionAndAnimatedValue() {
+    this._vScrollables[0] && this._vScrollables[0].scrollTo({
+      y: this.scrollYInputRange[0],
+      animated:false,
+    });
+    this._verticalScrollPos[0] = this.scrollYInputRange[0];
+    this.state.scrollY.setValue(this.scrollYInputRange[0]);
+  }
+
+  _animatedValueRef() {
+    const scrollYRange = [...this.scrollYInputRange];
+    if (!scrollYRange || Number.isNaN(scrollYRange[0]) || Number.isNaN(scrollYRange[1])) {
+      return;
     }
+    this.props && this.props.getHeaderScrollAnimValue && this.props.getHeaderScrollAnimValue(
+      (fadeLength) => {
+        scrollYRange[0] = scrollYRange[1] - fadeLength;
+        return this.state.scrollY.interpolate({
+          inputRange: scrollYRange,
+          outputRange: [-fadeLength, 0],
+        });
+      }
+    );
+  }
+
+  _setupVerticalScrollTable() {
+    this._verticalScrollPos = _.range(this.props.listInfo.length).map(() => this.scrollYInputRange[0]);
   }
 
   _handlePageVerticalScroll(e, index, relayCallback) {
-    // assumption: the value of e dont change too much, and this method is called only before user interaction
+    if (index === this._perfIndex) {
+      Perf.printWasted();
+      Perf.stop();
+      this._perfIndex = null;
+    }
     const offsetY = e && e.nativeEvent && e.nativeEvent.contentOffset && e.nativeEvent.contentOffset.y;
-    this._checkReachDest(e, index);
-    if (index === this._currentScrollableIndex) {
-      // console.log('vertical scroll info, index: ', index, e && e.nativeEvent);
-      if (typeof offsetY === 'number') {
-        this._driveVerticalScrollAnimation(offsetY, () => { this._currentVerticalScroll = offsetY; });
+    if (index === this.getCurrentScrollableIndex()) {
+      if ((this._isScrollYInRange(offsetY, index) || this._isContentSmall(index)) && typeof this._scrollDests[index] !== 'number') {
+        this._driveVerticalScrollAnimation(offsetY, () => (this._verticalScrollPos[index] = offsetY));
+      } else {
+        this._verticalScrollPos[index] = offsetY;
       }
     } else {
-      // console.log('missed scroll sync, index, currentScrollableIndex: ', index, this._currentScrollableIndex, e && e.nativeEvent);
+      this._verticalScrollPos[index] = offsetY;
     }
-
-    this._scrollPositions[index] = offsetY;
-
+    {
+      const dest = this._scrollDests[index];
+      if (typeof dest === 'number') {
+        if (offsetY < dest + 1 && offsetY > dest - 1) {
+          this._scrollDests[index] = null;
+        }
+      }
+    }
     relayCallback && relayCallback(e);
   }
 
-  _driveVerticalScrollAnimation(scrollY, callback = null, duration = 20) {
-    if (this._headerAnimationForbid) {
-      callback && callback();
-      return;
-    }
-    // console.log('will timging to value: ', scrollY);
+  _handleScrollBeginDrag(index) {
+    this._driveVerticalScrollAnimation(
+      this._verticalScrollPos[index],
+      () => (this._scrollDests[index] = null),
+      200
+    );
+  }
+
+  _driveVerticalScrollAnimation(scrollY, callback = null, duration = 16) {
     Animated.timing(
       this.state.scrollY,
       {
@@ -176,23 +271,42 @@ export default class OctopusView extends Component {
   }
 
   _defaultPageContentHeight() {
-    return ScreenH - this.props.navHeightDown - this.headerLayoutHeight;
+    return ScreenH - this.props.navHeightDown - this.headerLayoutHeight - 49; // 49 is height of tabbar
   }
 
-  _handleHorizontalScrollChange(e) {
-    // console.log('horizontal scroll animation ended.');
+  render() {
+    return (
+      <View style={styles.container} >
+        <ScrollView
+          horizontal
+          pagingEnabled
+          scrollEventThrottle={16}
+          style={styles.hScroll}
+          onMomentumScrollEnd={e => this._handleHorizontalScrollChange(e)}
+          onScroll={e => this._handleOnScroll(e)}
+          ref={hScroll => (this._hScroll = hScroll)}
+          automaticallyAdjustContentInsets={false}
+        >
+          {this._renderPageList()}
+        </ScrollView>
+        {this._renderHeader()}
+      </View>
+    );
+  }
+
+  _handleOnScroll(e) {
     this._updateScrollableIndex(e);
   }
 
-  _handleHScrollOffsetChange(e) {
+  _handleHorizontalScrollChange(e) {
+    this._pauseSetCurrentScrollableIndex = false;
     this._updateScrollableIndex(e);
   }
 
   _updateScrollableIndex(e) {
-    // console.log('horizontal scroll: ', e.nativeEvent);
     const offset = e && e.nativeEvent && e.nativeEvent.contentOffset;
     if (offset) {
-      this.currentScrollableIndex = Math.floor((ScreenW / 2.0 + offset.x) / ScreenW);
+      this.setCurrentScrollableIndex(Math.floor((ScreenW / 2.0 + offset.x) / ScreenW));
     }
   }
 
@@ -205,26 +319,29 @@ export default class OctopusView extends Component {
     const headerProps = headerInfo.props && { ...headerInfo.props } || {}; headerInfo.props = headerProps;
     // onLayout
     const onLayoutOld = headerProps.onLayout;
-    headerProps.onLayout = e => this._handleHeaderLayout(e, onLayoutOld);
-    headerProps.onHiddenPartLayout = e => this._handleHeaderHiddenPartLayout(e);
+    headerProps.onLayout = e => this._onHeaderLayout(e, onLayoutOld);
+    headerProps.onHiddenPartLayout = e => this._onHeaderHiddenPartLayout(e);
 
     return (
-      <Animated.View style={[styles.header, { top:this._headerTopAnimation() }]} >
-        <headerInfo.component {...headerInfo.props} />
+      <Animated.View
+        style={[styles.header, { top:this._headerTopAnimation() }]}
+      >
+        <headerInfo.component
+          {...headerInfo.props}
+          ref={ref => (this._headerRef = ref)}
+        />
       </Animated.View>
     );
   }
 
   get scrollYInputRange() {
     const scrollDownBound = -this.props.navHeightDown - this.headerLayoutHeight;
-    const scrollUpBound = -this.props.navHeightDown - (this.headerLayoutHeight - this.headerHiddenPartLayoutHeight);
-    // console.log('scrollYInputRange: ', scrollDownBound, scrollUpBound);
+    const scrollUpBound = -this.props.navHeightDown - (this.headerLayoutHeight - this.headerHiddenPartLayoutHeight + this.props.navHeightUp);
     return [scrollDownBound, scrollUpBound];
   }
 
   get scrollYOutputRange() {
     const ret = [this.props.navHeightDown, -(this.headerHiddenPartLayoutHeight - this.props.navHeightUp)];
-    // console.log('scrollYOutputRange: ', ret[0], ret[1]);
     return ret;
   }
 
@@ -234,7 +351,6 @@ export default class OctopusView extends Component {
     }
     const inputRange = this.scrollYInputRange;
     const outputRange = this.scrollYOutputRange;
-    // console.log('header container top animation inputRange, outputRange: ', inputRange, outputRange);
     return this.state.scrollY.interpolate({
       inputRange,
       outputRange,
@@ -243,7 +359,9 @@ export default class OctopusView extends Component {
   }
 
   _renderPageList() {
-    // console.log('rendering page list');
+    if (this.headerLayoutHeight === 0) {
+      return null;
+    }
     const listInfo = [...this.props.listInfo];
     const ret = listInfo.map((componentInfo, index) => {
       const props = componentInfo.props && { ...componentInfo.props } || {};
@@ -251,10 +369,15 @@ export default class OctopusView extends Component {
       props.onScroll = e => this._handlePageVerticalScroll(e, index, oldOnScroll);
       props.onContentSizeChange = (w, h) => this._handlePageContentLayout(h, index);
       const oldOnScrollAnimationEnd = props.onMomentumScrollEnd;
-      props.onMomentumScrollEnd = (e) => { this._headerAnimationForbid = false; oldOnScrollAnimationEnd && oldOnScrollAnimationEnd(e); };
+      props.onMomentumScrollEnd = (e) => {
+        oldOnScrollAnimationEnd && oldOnScrollAnimationEnd(e);
+      };
       props.contentInset = { top:this.headerLayoutHeight, left:0, bottom:0, right:0 };
-      props.ref = (scrollable) => { this._installPage(scrollable, index); };
+      props.ref = scrollable => this._installPage(scrollable, index);
       props.automaticallyAdjustContentInsets = false;
+      props.onScrollBeginDrag = () => {
+        this._handleScrollBeginDrag(index);
+      };
       let { style, ...other } = props;
       // fixme: how to do this without hack on width
       const extraStyle = { width:ScreenW };
@@ -275,32 +398,8 @@ export default class OctopusView extends Component {
   }
 
   _installPage(page, index) {
-    if (!this._hScrollables[index]) {
-      // first install, do some hack
-      (index === 0) && page && page.scrollTo({ y:this.scrollYInputRange[0] });
-    }
-    this._hScrollables[index] = page;
+    this._vScrollables[index] = page;
   }
-
-  render() {
-    return (
-      <View style={styles.container} >
-        <ScrollView
-          horizontal
-          pagingEnabled
-          scrollEventThrottle={16}
-          style={styles.hScroll}
-          onMomentumScrollEnd={e => this._handleHorizontalScrollChange(e)}
-          onScroll={e => this._handleHScrollOffsetChange(e)}
-          ref={hScroll => (this._hScroll = hScroll)}
-        >
-          {this._renderPageList()}
-        </ScrollView>
-        {this._renderHeader()}
-      </View>
-    );
-  }
-
 }
 
 OctopusView.propTypes = {
@@ -321,6 +420,7 @@ OctopusView.propTypes = {
 
   onPageChange: PropTypes.func,
   visiblePage: PropTypes.number,
+  getHeaderScrollAnimValue: PropTypes.func,
 };
 
 OctopusView.defaultProps = {
