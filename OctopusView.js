@@ -12,7 +12,6 @@ import {
   Dimensions,
 } from 'react-native';
 import _ from 'lodash';
-import Perf from 'react-addons-perf';
 import shallowCompare from 'react-addons-shallow-compare';
 
 const { width:ScreenW, height:ScreenH } = Dimensions.get('window');
@@ -98,7 +97,6 @@ export default class OctopusView extends Component {
     const newScrollable = this._vScrollables[newIndex];
     if (newScrollable) {
       if (currentVerticalScroll < scrollYInputRange[1] || this._verticalScrollPos[newIndex] < scrollYInputRange[1]) {
-        Perf.start();
         this._perfIndex = newIndex;
         this._scrollDests[newIndex] = updateCurrentScrollY;
         newScrollable.scrollTo({ y:updateCurrentScrollY - 1 });
@@ -208,8 +206,6 @@ export default class OctopusView extends Component {
 
   _handlePageVerticalScroll(e, index, relayCallback) {
     if (index === this._perfIndex) {
-      Perf.printWasted();
-      Perf.stop();
       this._perfIndex = null;
     }
     const offsetY = e && e.nativeEvent && e.nativeEvent.contentOffset && e.nativeEvent.contentOffset.y;

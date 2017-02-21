@@ -1,6 +1,6 @@
 {
   "name": "zhike-mobile-listview",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "index.js",
   "dependencies": {
@@ -10,7 +10,6 @@
     "zhike-mobile-components": "^1.0.0",
     "zhike-mobile-utils": "^1.0.0",
     "react-native-scrollable-tab-view": "0.7.0",
-    "react-addons-perf": "^15.2.0",
     "lodash": "^4.17.2"
   },
   "scripts": {
