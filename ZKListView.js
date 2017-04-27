@@ -83,7 +83,6 @@ export default class ZKListView extends Component {
     this.state = {
       dataSource:props.dataSource || [],
       loadingMore:false,
-      hasMore: props && props.hasMore
     };
     this.state.convertedDataSource = this._convertedDataSource(this.state.dataSource);
 
@@ -95,12 +94,10 @@ export default class ZKListView extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    const update = { dataSource:nextProps.dataSource };
-    update.convertedDataSource = this._convertedDataSource(update.dataSource);
-    if ({}.hasOwnProperty.call(nextProps, 'hasMore')) {
-      update.hasMore = nextProps.hasMore;
-    }
-    this.setState(update);
+    this.setState({
+      dataSource:nextProps.dataSource || [],
+      convertedDataSource: this._convertedDataSource(nextProps.dataSource || []),
+    });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -229,7 +226,9 @@ export default class ZKListView extends Component {
     if (this.state.loadingMore) {
       return '...';
     }
-    const ret = this.state.hasMore ? (this.props.loadMorePrompt || '点击加载更多') : (this.props.noMorePrompt || '没有更多数据了');
+    const ret = this.props.hasMore ?
+    (this.props.loadMorePrompt || '点击加载更多') :
+    (this.props.noMorePrompt || '没有更多数据了');
     return ret;
   }
 
@@ -238,7 +237,7 @@ export default class ZKListView extends Component {
       return;
     }
 
-    if (!this.state.hasMore) {
+    if (!this.props.hasMore) {
       Toast.show(this.props.noMorePrompt || '没有更多数据了', {
         duration: Toast.durations.SHORT,
         position: Toast.positions.CENTER,
@@ -254,8 +253,7 @@ export default class ZKListView extends Component {
       this.setState({ loadingMore:true });
       this.props.onFetchNextPage()
       .then((res) => {
-        const hasMore = res && {}.hasOwnProperty.call(res, 'hasMore') ? res.hasMore : this.state.hasMore;
-        this.setState({ loadingMore:false, hasMore });
+        this.setState({ loadingMore:false });
       })
       .catch((err) => {
         this.setState({ loadingMore:false });

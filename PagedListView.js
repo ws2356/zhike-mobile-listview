@@ -11,16 +11,24 @@ import ZKUtils from 'zhike-mobile-utils';
 import ZKListView from './ZKListView';
 
 export default class PagedListView extends Component {
-  constructor(props) {
+  state: { refreshing: bool, hasMore:bool }
+  _onScroll: (e:any) => void
+  _onPullDown: (e:any) => void
+  _loadNextPage: () => Promise<any>
+
+  constructor(props:any) {
     super(props);
-    this.state = { items:(props && props.initialItems) || [] };
+    this.state = {
+      refreshing: false,
+      hasMore: {}.hasOwnProperty.call(props, 'hasMore') ? !!props.hasMore : true
+    };
     this._onScroll = this._onScroll.bind(this);
     this._onPullDown = this._onPullDown.bind(this);
     this._loadNextPage = this._loadNextPage.bind(this);
   }
 
-  componentWillMount() {
-    if (!this.props.initialItems || !this.props.initialItems.length) {
+  componentDidMount() {
+    if (!this.props.items || !this.props.items.length) {
       this.setState({ refreshing:true });
       this._loadNextPage()
       .catch((err) => {
@@ -32,10 +40,6 @@ export default class PagedListView extends Component {
     }
   }
 
-  onItemsMuted() {
-    this.forceUpdate();
-  }
-
   _onScroll(e) {
     this.props && this.props.onScroll && this.props.onScroll(e);
   }
@@ -45,73 +49,41 @@ export default class PagedListView extends Component {
     this.props.fetchItems(0, this.props.pageSize * this._numberOfPages())
     .catch((err) => {
       console.error('failed to call fetchItems, error: ', err);
-      ZKUtils.handleError(err);
       return null;
     })
     .then((res) => {
-      const all = (res && res.items) || [];
-      const update = { refreshing:false };
-      if (all && all.length) {
-        Object.assign(update, { items:all, totalPage:-1 });
-      }
-      this.setState(update);
+      this.setState({
+        refreshing:false,
+        hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
+      });
     });
   }
 
   _loadNextPage() {
     return this.props.fetchItems(this._nextPage(), this.props.pageSize)// index starts from 1
-    .then((res) => {
-      this._appendPage(res);
-    });
-  }
-
-  _noMorePage() {
-    const ret = Object.prototype.hasOwnProperty.call(this.state, 'totalPage') && (this.state.totalPage > 0) && (this._numberOfPages() >= this.state.totalPage);
-    return ret;
+    .catch(err => console.warn('error fetchItems: ', err))
+    .then(res => this.setState({
+      hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
+    }));
   }
 
   _nextPage() {
-    return Math.floor(this.state.items.length / this.props.pageSize);
+    return Math.floor(this.props.items.length / this.props.pageSize) + 1;
   }
 
   _numberOfPages() {
-    return Math.floor((this.state.items.length + this.props.pageSize - 1) / this.props.pageSize);
-  }
-
-  _appendPage(pageOfItems) {
-    if (!pageOfItems) return;
-
-    const update = {};
-    if (Object.prototype.hasOwnProperty.call(pageOfItems, 'totalPage')) {
-      update.totalPage = pageOfItems.totalPage;
-    }
-
-    const existing = this.state.items;
-    const butTails = existing.slice(0, this.props.pageSize * this._nextPage());
-    let items = existing;
-    const newOnes = pageOfItems.items;
-    if (newOnes && newOnes.length) {
-      items = butTails.concat(newOnes);
-    }
-    update.items = items;
-    this.setState(update);
-    console.log(
-      'existing items, new items, resp: ',
-      existing.map(item => item.id),
-      newOnes.map(item => item.id),
-      pageOfItems
-    );
+    return Math.floor((this.props.items.length + this.props.pageSize - 1) / this.props.pageSize);
   }
 
   render() {
-    let { initialItems, fetchItems, onScroll, ...other } = this.props;
+    let { items, fetchItems, onScroll, style, separatorStyle, ...other } = this.props;
     other = other || {};
     return (
       <ZKListView
         onScroll={this._onScroll}
-        style={{ backgroundColor:'#f5f5f5' }}
-        dataSource={this.props.genDataSource(this.state.items)}
-        separatorStyle={{ backgroundColor: '#e6e6e6' }}
+        style={[{ backgroundColor:'#f5f5f5' }, style]}
+        dataSource={this.props.genDataSource(this.props.items)}
+        separatorStyle={[{ backgroundColor: '#e6e6e6' }, separatorStyle]}
         refreshControl={
           <RefreshControl
             refreshing={!!this.state.refreshing}
@@ -121,7 +93,7 @@ export default class PagedListView extends Component {
             progressBackgroundColor="#ffff00"
           />
         }
-        hasMore={!this._noMorePage()}
+        hasMore={this.state.hasMore}
         paging={true}
         onFetchNextPage={this._loadNextPage}
         {...other}
@@ -132,7 +104,7 @@ export default class PagedListView extends Component {
 
 PagedListView.propTypes = {
   ...ZKListView.propTypes,
-  initialItems: PropTypes.arrayOf(PropTypes.object),
+  items: PropTypes.arrayOf(PropTypes.object),
   fetchItems: PropTypes.func.isRequired,// (page, pageSize) => Promise<{items, totalPage}>
   pageSize: PropTypes.number,
   genDataSource: PropTypes.func.isRequired,
