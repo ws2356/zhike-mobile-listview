@@ -5,29 +5,40 @@ import React, {
   Component
 } from 'react';
 import {
+  View,
   RefreshControl,
+  ActivityIndicator,
+  TouchableWithoutFeedback,
+  PixelRatio,
+  Text,
 } from 'react-native';
 import ZKUtils from 'zhike-mobile-utils';
+import Toast from 'react-native-root-toast';
 import ZKListView from './ZKListView';
 
 export default class PagedListView extends Component {
-  state: { refreshing: bool, hasMore:bool }
-  _onScroll: (e:any) => void
+  state: { refreshing: bool, hasMore:bool, loadingMore:bool }
   _onPullDown: (e:any) => void
   _loadNextPage: () => Promise<any>
+  _onEndReached: (e:any) => void
+  _renderFooter: () => any
+  _loadMore: () => void
 
   constructor(props:any) {
     super(props);
     this.state = {
       refreshing: false,
-      hasMore: {}.hasOwnProperty.call(props, 'hasMore') ? !!props.hasMore : true
+      hasMore: {}.hasOwnProperty.call(props, 'hasMore') ? !!props.hasMore : true,
+      loadingMore:false,
     };
-    this._onScroll = this._onScroll.bind(this);
     this._onPullDown = this._onPullDown.bind(this);
     this._loadNextPage = this._loadNextPage.bind(this);
+    this._onEndReached = this._onEndReached.bind(this);
+    this._renderFooter = this._renderFooter.bind(this);
+    this._loadMore = this._loadMore.bind(this);
   }
 
-  componentDidMount() {
+  componentWillMount() {
     if (!this.props.items || !this.props.items.length) {
       this.setState({ refreshing:true });
       this._loadNextPage()
@@ -40,13 +51,12 @@ export default class PagedListView extends Component {
     }
   }
 
-  _onScroll(e) {
-    this.props && this.props.onScroll && this.props.onScroll(e);
-  }
-
   _onPullDown(e) {
     this.setState({ refreshing:true });
-    this.props.fetchItems(0, this.props.pageSize * this._numberOfPages())
+    this.props.fetchItems(
+      this.props.startIndex,
+      this.props.pageSize * this._numberOfPages()
+    )
     .catch((err) => {
       console.error('failed to call fetchItems, error: ', err);
       return null;
@@ -62,17 +72,94 @@ export default class PagedListView extends Component {
   _loadNextPage() {
     return this.props.fetchItems(this._nextPage(), this.props.pageSize)// index starts from 1
     .catch(err => console.warn('error fetchItems: ', err))
-    .then(res => this.setState({
-      hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
-    }));
+    .then((res) => {
+      this.setState({
+        hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
+      });
+    });
   }
 
   _nextPage() {
-    return Math.floor(this.props.items.length / this.props.pageSize) + 1;
+    return Math.floor(this.props.items.length / this.props.pageSize) + this.props.startIndex;
   }
 
   _numberOfPages() {
     return Math.floor((this.props.items.length + this.props.pageSize - 1) / this.props.pageSize);
+  }
+
+  _onEndReached(...args) {
+    this.props.onEndReached && this.props.onEndReached(...args);
+    this.props.autoPaging && (this._loadMore());
+  }
+
+  _renderFooter() {
+    return this.props.renderFooter ? this.props.renderFooter() : this._defaultFooter();
+  }
+
+  _defaultFooter() {
+    return (
+      <TouchableWithoutFeedback
+        onPress={this._loadMore}
+      >
+        <View
+          style={{
+            alignSelf:'stretch',
+            alignItems:'center',
+            justifyContent:'center',
+            height:40,
+            backgroundColor:'#ffffff',
+            borderTopWidth:1.0 / PixelRatio.get(),
+            borderTopColor:'#e6e6e6',
+          }}
+        >
+          {this.state.loadingMore ?
+            <ActivityIndicator
+              animating
+              size={'small'}
+            /> :
+              <Text style={{ color:'#747474' }} >{this._loadMoreText()}</Text>
+          }
+        </View>
+      </TouchableWithoutFeedback>
+    );
+  }
+
+  _loadMoreText() {
+    if (this.state.loadingMore) {
+      return '...';
+    }
+    const ret = this.state.hasMore ?
+    this.props.loadMorePrompt :
+    this.props.noMorePrompt;
+    return ret;
+  }
+
+  _loadMore() {
+    if (this.state.loadingMore) {
+      return;
+    }
+
+    if (!this.state.hasMore) {
+      Toast.show(this.props.noMorePrompt || '没有更多数据了', {
+        duration: Toast.durations.SHORT,
+        position: Toast.positions.CENTER,
+        shadow: false,
+        animation: true,
+        hideOnPress: false,
+        delay: 0,
+      });
+      return;
+    }
+
+    this.setState({ loadingMore: true });
+    this._loadNextPage()
+      .then((res) => {
+        this.setState({ loadingMore: false });
+      })
+      .catch((err) => {
+        this.setState({ loadingMore: false });
+        console.error('failed to call _loadMore, error: ', err);
+      });
   }
 
   render() {
@@ -80,10 +167,8 @@ export default class PagedListView extends Component {
     other = other || {};
     return (
       <ZKListView
-        onScroll={this._onScroll}
         style={[{ backgroundColor:'#f5f5f5' }, style]}
         dataSource={this.props.genDataSource(this.props.items)}
-        separatorStyle={[{ backgroundColor: '#e6e6e6' }, separatorStyle]}
         refreshControl={
           <RefreshControl
             refreshing={!!this.state.refreshing}
@@ -93,10 +178,9 @@ export default class PagedListView extends Component {
             progressBackgroundColor="#ffff00"
           />
         }
-        hasMore={this.state.hasMore}
-        paging={true}
-        onFetchNextPage={this._loadNextPage}
         {...other}
+        onEndReached={this._onEndReached}
+        renderFooter={this._renderFooter}
       />
     );
   }
@@ -108,8 +192,18 @@ PagedListView.propTypes = {
   fetchItems: PropTypes.func.isRequired,// (page, pageSize) => Promise<{items, totalPage}>
   pageSize: PropTypes.number,
   genDataSource: PropTypes.func.isRequired,
+  startIndex: PropTypes.number,
+
+  autoPaging: PropTypes.bool,
+  hasMore: PropTypes.bool,
+  loadMorePrompt: PropTypes.string,
+  noMorePrompt: PropTypes.string,
 };
 
 PagedListView.defaultProps = {
   pageSize: 10,
+  startIndex: 1,
+  hasMore: true,
+  loadMorePrompt: '加载更多',
+  noMorePrompt: '全部加载完毕',
 };

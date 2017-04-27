@@ -56,41 +56,25 @@ export default class ZKListView extends Component {
     sectionStyle: PropTypes.object,
     // eslint-disable-next-line
     sectionWrapperStyle: PropTypes.object,
-    // fixme: what'is that
-    headerRenderCounter: PropTypes.number,
 
     renderHeader:PropTypes.func,
     editable: PropTypes.bool,
     onDeleteRow: PropTypes.func,
-
-    autoPaging: PropTypes.bool,
-    paging: PropTypes.bool,
-    hasMore: PropTypes.bool,
-    onFetchNextPage: PropTypes.func,// must return a Promise for us to end refreshing
-    loadMorePrompt: PropTypes.string,
-    noMorePrompt: PropTypes.string,
   }
 
   static defaultProps = {
-    hasMore: true,
     numberOfCellsPerRow: 1,
-    loadMorePrompt: '加载更多',
-    noMorePrompt: '加载完毕',
   }
 
   constructor(props) {
     super(props);
     this.state = {
       dataSource:props.dataSource || [],
-      loadingMore:false,
     };
     this.state.convertedDataSource = this._convertedDataSource(this.state.dataSource);
 
-    this._loadMore = this._loadMore.bind(this);
     this._renderRow = this._renderRow.bind(this);
-    this._renderFooter = this._renderFooter.bind(this);
     this._renderSectionHeader = this._renderSectionHeader.bind(this);
-    this._onEndReached = this._onEndReached.bind(this);
   }
 
   componentWillReceiveProps(nextProps) {
@@ -102,11 +86,6 @@ export default class ZKListView extends Component {
 
   shouldComponentUpdate(nextProps, nextState) {
     return shallowCompare(this, nextProps, nextState);
-  }
-
-  _onEndReached() {
-    this.props.onEndReached && this.props.onEndReached();
-    this.props.autoPaging && (this._loadMore());
   }
 
   _convertedDataSource(dataSource) {
@@ -167,14 +146,11 @@ export default class ZKListView extends Component {
   _otherProps() {
     const {
       dataSource, // eslint-disable-line
-      headerRenderCounter, // eslint-disable-line
       renderSeparator, // eslint-disable-line
       hideSection, // eslint-disable-line
       sectionWrapperStyle, // eslint-disable-line
       sectionStyle, // eslint-disable-line
       onTapRow, // eslint-disable-line
-      hasMore, // eslint-disable-line
-      onFetchNextPage, // eslint-disable-line
       ...other
     } = this.props;
     return other;
@@ -186,81 +162,6 @@ export default class ZKListView extends Component {
     this._listView.scrollTo(...args);
   }
 
-  _renderFooter() {
-    if (this.props && this.props.paging) {
-      return this.props.renderFooter ? this.props.renderFooter() : this._defaultFooter();
-    } else {
-      return this.props.renderFooter ? this.props.renderFooter() : null;
-    }
-  }
-
-  _defaultFooter() {
-    return (
-      <TouchableWithoutFeedback
-        onPress={this._loadMore}
-      >
-        <View
-          style={{
-            alignSelf:'stretch',
-            alignItems:'center',
-            justifyContent:'center',
-            height:40,
-            backgroundColor:'#ffffff',
-            borderTopWidth:1.0 / PixelRatio.get(),
-            borderTopColor:'#e6e6e6'
-          }}
-        >
-          {this.state.loadingMore ?
-            <ActivityIndicator
-              animating
-              size={'small'}
-            /> :
-              <Text style={{ color:'#747474' }} >{this._loadMoreText()}</Text>
-          }
-        </View>
-      </TouchableWithoutFeedback>
-    );
-  }
-
-  _loadMoreText() {
-    if (this.state.loadingMore) {
-      return '...';
-    }
-    const ret = this.props.hasMore ?
-    (this.props.loadMorePrompt || '点击加载更多') :
-    (this.props.noMorePrompt || '没有更多数据了');
-    return ret;
-  }
-
-  _loadMore() {
-    if (this.state.loadingMore) {
-      return;
-    }
-
-    if (!this.props.hasMore) {
-      Toast.show(this.props.noMorePrompt || '没有更多数据了', {
-        duration: Toast.durations.SHORT,
-        position: Toast.positions.CENTER,
-        shadow: false,
-        animation: true,
-        hideOnPress: false,
-        delay: 0,
-      });
-      return;
-    }
-
-    if (this.props && this.props.onFetchNextPage) {
-      this.setState({ loadingMore:true });
-      this.props.onFetchNextPage()
-      .then((res) => {
-        this.setState({ loadingMore:false });
-      })
-      .catch((err) => {
-        this.setState({ loadingMore:false });
-        console.error('failed to call _loadMore, error: ', err);
-      });
-    }
-  }
 
   _renderSectionHeader(sectionData, sectionId) {
     return (
@@ -370,13 +271,11 @@ export default class ZKListView extends Component {
                 lineStyle={[{ marginLeft:12, height: 1.0 / PixelRatio.get() }, this.props.separatorStyle]}
               />)
             )
-
         }
         renderHeader={this.props.renderHeader}
         renderSectionHeader={
           this.props.hideSection ? null : this._renderSectionHeader
         }
-        renderFooter={this._renderFooter}
         enableEmptySections
         {...other}
       />
