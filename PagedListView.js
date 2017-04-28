@@ -169,7 +169,7 @@ export default class PagedListView extends Component {
       <ZKListView
         style={[{ backgroundColor:'#f5f5f5' }, style]}
         dataSource={this.props.genDataSource(this.props.items)}
-        refreshControl={
+        refreshControl={!this.props.pulldownRefresh ? null :
           <RefreshControl
             refreshing={!!this.state.refreshing}
             onRefresh={this._onPullDown}
@@ -198,6 +198,7 @@ PagedListView.propTypes = {
   hasMore: PropTypes.bool,
   loadMorePrompt: PropTypes.string,
   noMorePrompt: PropTypes.string,
+  pulldownRefresh: PropTypes.bool,
 };
 
 PagedListView.defaultProps = {
