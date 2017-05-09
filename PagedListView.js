@@ -57,26 +57,26 @@ export default class PagedListView extends Component {
       this.props.startIndex,
       this.props.pageSize * this._numberOfPages()
     )
-    .catch((err) => {
-      console.error('failed to call fetchItems, error: ', err);
-      return null;
-    })
     .then((res) => {
       this.setState({
         refreshing:false,
         hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
       });
+    })
+    .catch((err) => {
+      this.setState({ refreshing:false });
+      console.error('failed to call fetchItems, error: ', err);
     });
   }
 
   _loadNextPage() {
     return this.props.fetchItems(this._nextPage(), this.props.pageSize)// index starts from 1
-    .catch(err => console.warn('error fetchItems: ', err))
     .then((res) => {
       this.setState({
         hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
       });
-    });
+    })
+    .catch(err => console.warn('error fetchItems: ', err));
   }
 
   _nextPage() {
