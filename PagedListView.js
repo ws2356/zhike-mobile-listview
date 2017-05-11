@@ -108,19 +108,22 @@ export default class PagedListView extends Component {
             alignSelf:'stretch',
             alignItems:'center',
             justifyContent:'center',
-            height:40,
             backgroundColor:'#f7f8fa',
             borderTopWidth:1.0 / PixelRatio.get(),
             borderTopColor:'#e6e6e6',
+            marginBottom:44,
           }}
         >
-          {this.state.loadingMore ?
-            <ActivityIndicator
-              animating
-              size={'small'}
-            /> :
-              <Text style={{ color:'#747474' }} >{this._loadMoreText()}</Text>
+          {
+            this.state.loadingMore ? (
+              this.props.renderLoadingAnimation ? this.props.renderLoadingAnimation() :
+                <ActivityIndicator
+                  animating
+                  size={'small'}
+                />
+            ) : null
           }
+          <Text style={{ color: '#747474', marginTop:5 }} >{this._loadMoreText()}</Text>
         </View>
       </TouchableWithoutFeedback>
     );
@@ -128,7 +131,7 @@ export default class PagedListView extends Component {
 
   _loadMoreText() {
     if (this.state.loadingMore) {
-      return '...';
+      return '加载中';
     }
     const ret = this.state.hasMore ?
     this.props.loadMorePrompt :
