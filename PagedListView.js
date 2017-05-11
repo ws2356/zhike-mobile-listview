@@ -76,7 +76,9 @@ export default class PagedListView extends Component {
         hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
       });
     })
-    .catch(err => console.warn('error fetchItems: ', err));
+    .catch(err => {
+      console.warn('error fetchItems: ', err);
+    });
   }
 
   _nextPage() {
@@ -107,7 +109,7 @@ export default class PagedListView extends Component {
             alignItems:'center',
             justifyContent:'center',
             height:40,
-            backgroundColor:'#ffffff',
+            backgroundColor:'#f7f8fa',
             borderTopWidth:1.0 / PixelRatio.get(),
             borderTopColor:'#e6e6e6',
           }}
