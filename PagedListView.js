@@ -40,14 +40,13 @@ export default class PagedListView extends Component {
 
   componentWillMount() {
     if (!this.props.items || !this.props.items.length) {
-      this.setState({ refreshing:true });
-      this._loadNextPage()
-      .catch((err) => {
-        console.warn('failed to call _loadNextPage, error: ', err);
-      })
-      .then(() => {
-        this.setState({ refreshing:false });
-      });
+      this.setState({ hasMore:true }, () => this._loadMore(true));
+    }
+  }
+
+  componentWillReceiveProps(nextProps:any) {
+    if (nextProps.items.length <= 0 && this.props.items.length > 0) {
+      this.setState({ hasMore: true }, () => this._loadMore(true));
     }
   }
 
@@ -69,8 +68,8 @@ export default class PagedListView extends Component {
     });
   }
 
-  _loadNextPage() {
-    return this.props.fetchItems(this._nextPage(), this.props.pageSize)// index starts from 1
+  _loadNextPage(initial:bool=false) {
+    return this.props.fetchItems(this._nextPage(), this.props.pageSize, !initial)// index starts from 1
     .then((res) => {
       this.setState({
         hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
@@ -91,7 +90,7 @@ export default class PagedListView extends Component {
 
   _onEndReached(...args) {
     this.props.onEndReached && this.props.onEndReached(...args);
-    this.props.autoPaging && (this._loadMore());
+    this.props.autoPaging && this.state.hasMore && !this.state.loadingMore && (this._loadMore());
   }
 
   _renderFooter() {
@@ -139,36 +138,42 @@ export default class PagedListView extends Component {
     return ret;
   }
 
-  _loadMore() {
+  _loadMore(initial?:bool = false) {
     if (this.state.loadingMore) {
       return;
     }
 
     if (!this.state.hasMore) {
-      Toast.show(this.props.noMorePrompt || '没有更多数据了', {
-        duration: Toast.durations.SHORT,
-        position: Toast.positions.CENTER,
-        shadow: false,
-        animation: true,
-        hideOnPress: false,
-        delay: 0,
-      });
+      // Toast.show(this.props.noMorePrompt || '没有更多数据了', {
+      //   duration: Toast.durations.SHORT,
+      //   position: Toast.positions.CENTER,
+      //   shadow: false,
+      //   animation: true,
+      //   hideOnPress: false,
+      //   delay: 0,
+      // });
       return;
     }
 
-    this.setState({ loadingMore: true });
-    this._loadNextPage()
-      .then((res) => {
-        this.setState({ loadingMore: false });
-      })
-      .catch((err) => {
-        this.setState({ loadingMore: false });
-        console.error('failed to call _loadMore, error: ', err);
-      });
+    this.setState((prevState) => {
+      if (!prevState.loadingMore) {
+        this._loadNextPage(initial)
+          .then((res) => {
+            this.setState({ loadingMore: false });
+          })
+          .catch((err) => {
+            this.setState({ loadingMore: false });
+            console.error('failed to call _loadMore, error: ', err);
+          });
+        return { ...prevState, loadingMore:true };
+      } else {
+        return prevState;
+      }
+    });
   }
 
   render() {
-    let { items, fetchItems, onScroll, style, separatorStyle, ...other } = this.props;
+    let { items, fetchItems, onScroll, style, separatorStyle, listViewPageSize, ...other } = this.props;
     other = other || {};
     return (
       <ZKListView
@@ -183,9 +188,11 @@ export default class PagedListView extends Component {
             progressBackgroundColor="#ffff00"
           />
         }
+        onEndReachedThreshold={100}
         {...other}
         onEndReached={this._onEndReached}
         renderFooter={this._renderFooter}
+        {...(listViewPageSize ? { pageSize: listViewPageSize } : {})}
       />
     );
   }
