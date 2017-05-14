@@ -22,7 +22,7 @@ export default class PagedListView extends Component {
   _loadNextPage: () => Promise<any>
   _onEndReached: (e:any) => void
   _renderFooter: () => any
-  _loadMore: () => void
+  loadMore: () => void
 
   constructor(props:any) {
     super(props);
@@ -35,18 +35,12 @@ export default class PagedListView extends Component {
     this._loadNextPage = this._loadNextPage.bind(this);
     this._onEndReached = this._onEndReached.bind(this);
     this._renderFooter = this._renderFooter.bind(this);
-    this._loadMore = this._loadMore.bind(this);
+    this.loadMore = this.loadMore.bind(this);
   }
 
   componentWillMount() {
     if (!this.props.items || !this.props.items.length) {
-      this.setState({ hasMore:true }, () => this._loadMore(true));
-    }
-  }
-
-  componentWillReceiveProps(nextProps:any) {
-    if (nextProps.items.length <= 0 && this.props.items.length > 0) {
-      this.setState({ hasMore: true }, () => this._loadMore(true));
+      this.setState({ hasMore:true }, () => this.loadMore(true));
     }
   }
 
@@ -90,7 +84,7 @@ export default class PagedListView extends Component {
 
   _onEndReached(...args) {
     this.props.onEndReached && this.props.onEndReached(...args);
-    this.props.autoPaging && this.state.hasMore && !this.state.loadingMore && (this._loadMore());
+    this.props.autoPaging && this.state.hasMore && !this.state.loadingMore && (this.loadMore());
   }
 
   _renderFooter() {
@@ -100,7 +94,7 @@ export default class PagedListView extends Component {
   _defaultFooter() {
     return (
       <TouchableWithoutFeedback
-        onPress={this._loadMore}
+        onPress={this.loadMore}
       >
         <View
           style={{
@@ -138,7 +132,11 @@ export default class PagedListView extends Component {
     return ret;
   }
 
-  _loadMore(initial?:bool = false) {
+  loadMoreOnce(initial?:bool) {
+    this.setState({ loadingMore:false, hasMore:true }, () => this.loadMore(initial));
+  }
+
+  loadMore(initial?:bool= false) {
     if (this.state.loadingMore) {
       return;
     }
@@ -163,7 +161,7 @@ export default class PagedListView extends Component {
           })
           .catch((err) => {
             this.setState({ loadingMore: false });
-            console.error('failed to call _loadMore, error: ', err);
+            console.error('failed to call loadMore, error: ', err);
           });
         return { ...prevState, loadingMore:true };
       } else {
