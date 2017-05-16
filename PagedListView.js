@@ -62,8 +62,8 @@ export default class PagedListView extends Component {
     });
   }
 
-  _loadNextPage(initial:bool=false) {
-    return this.props.fetchItems(this._nextPage(), this.props.pageSize, !initial)// index starts from 1
+  _loadNextPage(initial:bool=false, context:any) {
+    return this.props.fetchItems(initial ? this.props.startIndex : this._nextPage(), this.props.pageSize, !initial, context)// index starts from 1
     .then((res) => {
       this.setState({
         hasMore: Array.isArray(res) && res.length >= this.props.pageSize,
@@ -132,11 +132,11 @@ export default class PagedListView extends Component {
     return ret;
   }
 
-  loadMoreOnce(initial?:bool) {
-    this.setState({ loadingMore:false, hasMore:true }, () => this.loadMore(initial));
+  loadMoreOnce(initial?:bool, context:any) {
+    this.setState({ loadingMore:false, hasMore:true }, () => this.loadMore(initial, context));
   }
 
-  loadMore(initial?:bool= false) {
+  loadMore(initial?:bool= false, context:any) {
     if (this.state.loadingMore) {
       return;
     }
@@ -155,7 +155,7 @@ export default class PagedListView extends Component {
 
     this.setState((prevState) => {
       if (!prevState.loadingMore) {
-        this._loadNextPage(initial)
+        this._loadNextPage(initial, context)
           .then((res) => {
             this.setState({ loadingMore: false });
           })
