@@ -7,9 +7,9 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import _ from 'lodash';
-import Button from 'react-native-scrollable-tab-view/Button';
 const { width:ScreenW } = Dimensions.get('window');
 
 export default class ScrollableTabBar extends Component {
@@ -70,7 +70,7 @@ export default class ScrollableTabBar extends Component {
   renderTabOption(name, page, pageCount, passProps) {
     const isTabActive = this.props.activeTab === page;
 
-    return (<Button
+    return (<TouchableOpacity
       style={{ height:50, alignItems:'center', justifyContent:'center', marginLeft: 22, marginRight: page == pageCount - 1 ? 22 : 38 }}
       key={name}
       accessible={true}
@@ -80,7 +80,7 @@ export default class ScrollableTabBar extends Component {
       {...passProps}
     >
       {this.renderTabName(name, page, isTabActive)}
-    </Button>);
+    </TouchableOpacity>);
   }
 
   renderTabName(name, page, isTabActive) {
