@@ -5,7 +5,6 @@
   "main": "index.js",
   "peerDependencies": {
     "lodash": "^4.17.2",
-    "react-native-scrollable-tab-view": "0.7.0",
     "react-addons-shallow-compare": "^15.3.2",
     "react-native-swipeout": "^2.0.12",
     "zhike-mobile-components": "^2.0.0",
