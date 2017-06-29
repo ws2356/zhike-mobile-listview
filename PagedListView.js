@@ -12,7 +12,6 @@ import {
   PixelRatio,
   Text,
 } from 'react-native';
-import ZKUtils from 'zhike-mobile-utils';
 import Toast from 'react-native-root-toast';
 import ZKListView from './ZKListView';
 
