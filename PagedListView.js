@@ -12,11 +12,10 @@ import {
   PixelRatio,
   Text,
 } from 'react-native';
-import Toast from 'react-native-root-toast';
 import ZKListView from './ZKListView';
 
 export default class PagedListView extends Component {
-  state: { refreshing: bool, hasMore:bool, loadingMore:bool }
+  state: { refreshing: bool, hasMore:bool, loadingMore:bool, showPageLoadingIndicator:bool }
   _onPullDown: (e:any) => void
   _loadNextPage: () => Promise<any>
   _onEndReached: (e:any) => void
@@ -29,6 +28,7 @@ export default class PagedListView extends Component {
       refreshing: false,
       hasMore: {}.hasOwnProperty.call(props, 'hasMore') ? !!props.hasMore : true,
       loadingMore:false,
+      showPageLoadingIndicator: props.items && props.items.length,
     };
     this._onPullDown = this._onPullDown.bind(this);
     this._loadNextPage = this._loadNextPage.bind(this);
@@ -40,6 +40,14 @@ export default class PagedListView extends Component {
   componentWillMount() {
     if (!this.props.items || !this.props.items.length) {
       this.setState({ hasMore:true }, () => this.loadMore(true));
+    }
+  }
+
+  componentWillReceiveProps(nextProps) {
+    const showPageLoadingIndicator = nextProps.items && nextProps.items.length;
+    if ((showPageLoadingIndicator && !this.state.showPageLoadingIndicator) ||
+    (!showPageLoadingIndicator && this.state.showPageLoadingIndicator)) {
+        this.setState({ showPageLoadingIndicator });
     }
   }
 
@@ -87,10 +95,15 @@ export default class PagedListView extends Component {
   }
 
   _renderFooter() {
-    return this.props.renderFooter ? this.props.renderFooter() : this._defaultFooter();
+    return this._defaultFooter();
   }
 
   _defaultFooter() {
+    if (this.props.hideFooterInitially) {
+      if (!this.state.showPageLoadingIndicator) {
+        return null;
+      }
+    }
     return (
       <TouchableWithoutFeedback
         onPress={this.loadMore}
@@ -108,14 +121,17 @@ export default class PagedListView extends Component {
         >
           {
             this.state.loadingMore ? (
-              this.props.renderLoadingAnimation ? this.props.renderLoadingAnimation() :
+              this.props.renderLoadingAnimation ? this.props.renderLoadingAnimation({ loading:this.state.loadingMore }) :
                 <ActivityIndicator
                   animating
                   size={'small'}
                 />
             ) : null
           }
-          <Text style={{ color: '#747474', marginTop:5 }} >{this._loadMoreText()}</Text>
+          {
+            this.props.renderFooter ? this.props.renderFooter({ loading:this.state.loadingMore }) :
+            <Text style={{ color: '#747474', marginTop:5 }} >{this._loadMoreText()}</Text>
+          }
         </View>
       </TouchableWithoutFeedback>
     );
@@ -208,6 +224,7 @@ PagedListView.propTypes = {
   loadMorePrompt: PropTypes.string,
   noMorePrompt: PropTypes.string,
   pulldownRefresh: PropTypes.bool,
+  hideFooterInitially: PropTypes.bool,
 };
 
 PagedListView.defaultProps = {
@@ -216,4 +233,5 @@ PagedListView.defaultProps = {
   hasMore: true,
   loadMorePrompt: '加载更多',
   noMorePrompt: '全部加载完毕',
+  hideFooterInitially: true,
 };
