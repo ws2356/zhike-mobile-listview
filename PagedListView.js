@@ -104,6 +104,10 @@ export default class PagedListView extends Component {
         return null;
       }
     }
+
+    const staticFooter = this.props.renderFooter ? this.props.renderFooter({ loading: this.state.loadingMore }) :
+      <Text style={{ color: '#747474', marginTop: 5 }} >{this._loadMoreText()}</Text>
+    
     return (
       <TouchableWithoutFeedback
         onPress={this.loadMore}
@@ -129,8 +133,7 @@ export default class PagedListView extends Component {
             ) : null
           }
           {
-            this.props.renderFooter ? this.props.renderFooter({ loading:this.state.loadingMore }) :
-            <Text style={{ color: '#747474', marginTop:5 }} >{this._loadMoreText()}</Text>
+            this.state.hasMore ? null : staticFooter
           }
         </View>
       </TouchableWithoutFeedback>
