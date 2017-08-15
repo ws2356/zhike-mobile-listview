@@ -99,6 +99,7 @@ export default class PagedListView extends Component {
   }
 
   _defaultFooter() {
+    const { footerStyle } = this.props;
     if (this.props.hideFooterInitially) {
       if (!this.state.showPageLoadingIndicator) {
         return null;
@@ -113,7 +114,7 @@ export default class PagedListView extends Component {
         onPress={this.loadMore}
       >
         <View
-          style={{
+          style={[{
             alignSelf:'stretch',
             alignItems:'center',
             justifyContent:'center',
@@ -121,7 +122,7 @@ export default class PagedListView extends Component {
             borderTopWidth:1.0 / PixelRatio.get(),
             borderTopColor:'#e6e6e6',
             marginBottom:44,
-          }}
+          }, footerStyle]}
         >
           {
             this.state.loadingMore ? (
@@ -228,6 +229,7 @@ PagedListView.propTypes = {
   noMorePrompt: PropTypes.string,
   pulldownRefresh: PropTypes.bool,
   hideFooterInitially: PropTypes.bool,
+  footerStyle: PropTypes.any,
 };
 
 PagedListView.defaultProps = {
