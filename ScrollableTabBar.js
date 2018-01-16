@@ -163,16 +163,7 @@ export default class ScrollableTabBar extends Component {
 }
 
 ScrollableTabBar.propTypes = {
-  goToPage: PropTypes.func,
-  activeTab: PropTypes.number,
-  tabs: PropTypes.array,
-  underlineColor: PropTypes.string,
-  underlineHeight: PropTypes.number,
-  backgroundColor: PropTypes.string,
-  activeTextColor: PropTypes.string,
-  inactiveTextColor: PropTypes.string,
-  textStyle: propTypes.style,
-  tabStyle: propTypes.style,
+  
 };
 
 ScrollableTabBar.defaultProps = {
