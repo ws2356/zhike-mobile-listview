@@ -5,7 +5,8 @@
 * @Email:  betterofsong@gmail.com
 */
 
-import React, { Component, PropTypes } from 'react';
+import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import {
   StyleSheet,
   Text,
@@ -49,7 +50,7 @@ export default class ZKListView extends Component {
     renderSeparator: PropTypes.func,
     alwaysRenderSeparator: PropTypes.bool,
     // eslint-disable-next-line
-    separatorStyle: PropTypes.oneOfType([PropTypes.object, PropTypes.number]), 
+    separatorStyle: PropTypes.oneOfType([PropTypes.object, PropTypes.number]),
 
     hideSection: PropTypes.bool,
     // eslint-disable-next-line
