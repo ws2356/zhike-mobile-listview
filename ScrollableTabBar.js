@@ -1,6 +1,7 @@
 // @flow
 
 import React, { Component } from 'react';
+import PropTypes from 'prop-types';
 import {
   View,
   Text,
@@ -162,14 +163,14 @@ export default class ScrollableTabBar extends Component {
 }
 
 ScrollableTabBar.propTypes = {
-  goToPage: React.PropTypes.func,
-  activeTab: React.PropTypes.number,
-  tabs: React.PropTypes.array,
-  underlineColor: React.PropTypes.string,
-  underlineHeight: React.PropTypes.number,
-  backgroundColor: React.PropTypes.string,
-  activeTextColor: React.PropTypes.string,
-  inactiveTextColor: React.PropTypes.string,
+  goToPage: PropTypes.func,
+  activeTab: PropTypes.number,
+  tabs: PropTypes.array,
+  underlineColor: PropTypes.string,
+  underlineHeight: PropTypes.number,
+  backgroundColor: PropTypes.string,
+  activeTextColor: PropTypes.string,
+  inactiveTextColor: PropTypes.string,
   textStyle: Text.propTypes.style,
   tabStyle: View.propTypes.style,
 };
@@ -197,4 +198,3 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ccc',
   },
 });
-

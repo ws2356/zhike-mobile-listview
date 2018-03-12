@@ -1,9 +1,9 @@
 //@flow
 
 import React, {
-  PropTypes,
   Component
 } from 'react';
+import PropTypes from 'prop-types';
 import {
   View,
   RefreshControl,
@@ -108,7 +108,7 @@ export default class PagedListView extends Component {
 
     const staticFooter = this.props.renderFooter ? this.props.renderFooter({ loading: this.state.loadingMore }) :
       <Text style={{ color: '#747474', marginTop: 5 }} >{this._loadMoreText()}</Text>
-    
+
     return (
       <TouchableWithoutFeedback
         onPress={this.loadMore}
