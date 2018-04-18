@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Dimensions,
   TouchableOpacity,
+  ViewPropTypes,
 } from 'react-native';
 import _ from 'lodash';
 const { width:ScreenW } = Dimensions.get('window');
@@ -172,7 +173,7 @@ ScrollableTabBar.propTypes = {
   activeTextColor: PropTypes.string,
   inactiveTextColor: PropTypes.string,
   textStyle: Text.propTypes.style,
-  tabStyle: View.propTypes.style,
+  tabStyle: ViewPropTypes.style,
 };
 
 ScrollableTabBar.defaultProps = {
