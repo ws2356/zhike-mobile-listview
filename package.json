@@ -1,6 +1,6 @@
 {
   "name": "zhike-mobile-listview",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "",
   "main": "index.js",
   "peerDependencies": {
@@ -8,7 +8,7 @@
     "lodash": "^4.17.2",
     "react-addons-shallow-compare": "^15.3.2",
     "react-native-swipeout": "^2.0.12",
-    "zhike-mobile-components": "^2.0.0"
+    "zhike-mobile-components": "^3.0.0"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
